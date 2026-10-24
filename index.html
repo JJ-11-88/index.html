@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>トヨタ自動車 (7203) BS・財務データ分析</title>
+  <title>API連携 財務データ分析ダッシュボード</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
@@ -30,11 +30,20 @@
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <span class="px-2 py-0.5 rounded text-xs font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">7203</span>
-            <h1 class="text-base font-bold text-slate-100 leading-none">トヨタ自動車株式会社</h1>
+            <span id="headerCode" class="px-2 py-0.5 rounded text-xs font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">7203</span>
+            <h1 id="headerName" class="text-base font-bold text-slate-100 leading-none">読み込み中...</h1>
           </div>
-          <p class="text-[11px] text-slate-400 mt-1">輸送用機器 | 単一銘柄 財務分析レポート</p>
+          <p class="text-[11px] text-slate-400 mt-1" id="headerSector">Google Apps Script API 連携</p>
         </div>
+      </div>
+
+      <!-- 会社切り替え用セレクトボックス -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-slate-400 hidden sm:inline">銘柄選択:</span>
+        <select id="stockSelector" onchange="changeStock(this.value)" class="bg-slate-900 border border-slate-700 text-slate-100 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-500">
+          <option value="7203">7203 トヨタ自動車</option>
+          <option value="6758">6758 ソニーグループ</option>
+        </select>
       </div>
     </div>
   </header>
@@ -45,8 +54,8 @@
     <!-- Overview Header Card -->
     <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       <div>
-        <h2 class="text-xl font-bold text-slate-100">トヨタ自動車 財務概要</h2>
-        <p class="text-xs text-slate-400 mt-1" id="latestInfoText">直近決算期: 2025年3月期 | 直近10年データ（2016年〜2025年期）</p>
+        <h2 class="text-xl font-bold text-slate-100">連結財務概要 (API連携)</h2>
+        <p class="text-xs text-slate-400 mt-1" id="latestInfoText">データを取得しています...</p>
       </div>
       <div class="flex items-center gap-4 bg-slate-900/80 p-3 rounded-xl border border-slate-700/60 self-stretch md:self-auto justify-around">
         <div class="text-center md:text-right">
@@ -115,7 +124,7 @@
       <div class="flex items-center justify-between">
         <h3 class="text-sm md:text-base font-bold text-slate-200 flex items-center gap-2">
           <i data-lucide="list-filter" class="w-5 h-5 text-cyan-400"></i>
-          年別 財務詳細内訳
+          年別 財務詳細内訳 (API取得)
         </h3>
         <span class="text-xs text-slate-400">タップで詳細開閉</span>
       </div>
@@ -128,39 +137,57 @@
   </main>
 
   <script>
-    // TOYOTA MOTOR CORP (7203) 10-YEAR HISTORICAL DATA (2016 - 2025)
-    const TOYOTA_DATA = {
-      code: "7203",
-      name: "トヨタ自動車",
-      sector: "輸送用機器",
-      years: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025],
-      currentAssets: [172000, 181000, 191000, 198000, 201000, 215000, 235000, 258000, 281000, 298000], // 億円
-      fixedAssets:   [205000, 218000, 222000, 228000, 225000, 248000, 271000, 294000, 319000, 345000],
-      currentLiab:   [138000, 142000, 148000, 152000, 158000, 169000, 185000, 201000, 218000, 232000],
-      fixedLiab:     [124000, 131000, 135000, 141000, 139000, 151000, 168000, 182000, 195000, 210000],
-      equity:        [115000, 126000, 130000, 133000, 129000, 143000, 153000, 169000, 187000, 201000],
-      netIncome:     [23126,  18311,  24939,  18828,  20761,  22452,  28501,  24513,  49449,  47600]
-    };
+    // ★ ここにご自身で発行したGoogle Apps ScriptのウェブアプリURLを貼り付けてください
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPyVtwqKUUsouCGdTEGn796Nw7dUFVjBjPuSxi-rcGqcsMrVRmya3bKZg05Ipim2lECw/exec";
 
-    let amountUnit = "hundred_million"; // 'hundred_million' or 'million'
+    let fetchedStockData = null;
+    let amountUnit = "hundred_million"; 
     let bsChartInstance = null;
     let ratioChart1Instance = null;
     let ratioChart2Instance = null;
 
     window.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
-      renderAllView();
+      loadFinancialDataFromAPI("7203"); // 初期表示はトヨタ
     });
+
+    function changeStock(code) {
+      loadFinancialDataFromAPI(code);
+    }
+
+    async function loadFinancialDataFromAPI(code) {
+      try {
+        const response = await fetch(`${GAS_API_URL}?code=${code}`);
+        if (!response.ok) throw new Error("ネットワークエラーが発生しました");
+        
+        const data = await response.json();
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+
+        fetchedStockData = data;
+
+        document.getElementById('headerCode').textContent = fetchedStockData.code;
+        document.getElementById('headerName').textContent = fetchedStockData.name + "株式会社";
+        document.getElementById('headerSector').textContent = fetchedStockData.sector + " | API連携データ";
+
+        lucide.createIcons();
+        renderAllView();
+      } catch (error) {
+        console.error(error);
+        alert("APIからのデータ取得に失敗しました。GASのURLをご確認ください。");
+      }
+    }
 
     function toggleAmountUnit(unit) {
       amountUnit = unit;
       document.getElementById('unitBtn1').className = unit === 'hundred_million' ? "px-3 py-1 rounded-lg bg-cyan-600 text-white font-medium transition" : "px-3 py-1 rounded-lg bg-slate-700 text-slate-300 transition";
       document.getElementById('unitBtn2').className = unit === 'million' ? "px-3 py-1 rounded-lg bg-cyan-600 text-white font-medium transition" : "px-3 py-1 rounded-lg bg-slate-700 text-slate-300 transition";
-      renderAllView();
+      if (fetchedStockData) renderAllView();
     }
 
     function renderAllView() {
-      const data = TOYOTA_DATA;
+      const data = fetchedStockData;
       const latestIdx = data.years.length - 1;
       const totalAssets = data.currentAssets[latestIdx] + data.fixedAssets[latestIdx];
       const equityRatio = ((data.equity[latestIdx] / totalAssets) * 100).toFixed(1);
@@ -229,46 +256,18 @@
         data: {
           labels: data.years.map(y => `${y}期`),
           datasets: [
-            {
-              label: '流動資産',
-              data: data.currentAssets.map(v => v * mult),
-              backgroundColor: '#06b6d4',
-              stack: 'Stack 0',
-            },
-            {
-              label: '固定資産',
-              data: data.fixedAssets.map(v => v * mult),
-              backgroundColor: '#3b82f6',
-              stack: 'Stack 0',
-            },
-            {
-              label: '流動負債',
-              data: data.currentLiab.map(v => v * mult),
-              backgroundColor: '#f43f5e',
-              stack: 'Stack 1',
-            },
-            {
-              label: '固定負債',
-              data: data.fixedLiab.map(v => v * mult),
-              backgroundColor: '#fb7185',
-              stack: 'Stack 1',
-            },
-            {
-              label: '純資産 (自己資本)',
-              data: data.equity.map(v => v * mult),
-              backgroundColor: '#10b981',
-              stack: 'Stack 1',
-            }
+            { label: '流動資産', data: data.currentAssets.map(v => v * mult), backgroundColor: '#06b6d4', stack: 'Stack 0' },
+            { label: '固定資産 (非流動資産)', data: data.fixedAssets.map(v => v * mult), backgroundColor: '#3b82f6', stack: 'Stack 0' },
+            { label: '流動負債', data: data.currentLiab.map(v => v * mult), backgroundColor: '#f43f5e', stack: 'Stack 1' },
+            { label: '固定負債 (非流動負債)', data: data.fixedLiab.map(v => v * mult), backgroundColor: '#fb7185', stack: 'Stack 1' },
+            { label: '純資産 (持分)', data: data.equity.map(v => v * mult), backgroundColor: '#10b981', stack: 'Stack 1' }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: {
-              position: 'top',
-              labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 }
-            },
+            legend: { position: 'top', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 } },
             tooltip: {
               callbacks: {
                 label: (context) => `${context.dataset.label}: ${context.raw.toLocaleString()} ${amountUnit === 'million' ? '百万円' : '億円'}`
@@ -295,16 +294,12 @@
             {
               label: '自己資本比率 (%)',
               data: data.years.map((y, i) => ((data.equity[i] / (data.currentAssets[i] + data.fixedAssets[i])) * 100).toFixed(1)),
-              borderColor: '#06b6d4',
-              backgroundColor: '#06b6d4',
-              tension: 0.2
+              borderColor: '#06b6d4', backgroundColor: '#06b6d4', tension: 0.2
             },
             {
               label: 'ROE (%)',
               data: data.years.map((y, i) => ((data.netIncome[i] / data.equity[i]) * 100).toFixed(1)),
-              borderColor: '#10b981',
-              backgroundColor: '#10b981',
-              tension: 0.2
+              borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.2
             }
           ]
         },
@@ -327,16 +322,8 @@
         data: {
           labels: data.years.map(y => `${y}期`),
           datasets: [
-            {
-              label: '流動比率 (%)',
-              data: data.years.map((y, i) => ((data.currentAssets[i] / data.currentLiab[i]) * 100).toFixed(1)),
-              backgroundColor: '#3b82f6',
-            },
-            {
-              label: '固定比率 (%)',
-              data: data.years.map((y, i) => ((data.fixedAssets[i] / data.equity[i]) * 100).toFixed(1)),
-              backgroundColor: '#f43f5e',
-            }
+            { label: '流動比率 (%)', data: data.years.map((y, i) => ((data.currentAssets[i] / data.currentLiab[i]) * 100).toFixed(1)), backgroundColor: '#3b82f6' },
+            { label: '固定比率 (%)', data: data.years.map((y, i) => ((data.fixedAssets[i] / data.equity[i]) * 100).toFixed(1)), backgroundColor: '#f43f5e' }
           ]
         },
         options: {
@@ -376,14 +363,14 @@
                 <div class="space-y-1.5">
                   <span class="block font-semibold text-cyan-400 border-b border-cyan-500/20 pb-1">資産の部</span>
                   <div class="flex justify-between text-slate-300"><span>流動資産:</span> <span>${formatValue(curA)}</span></div>
-                  <div class="flex justify-between text-slate-300"><span>固定資産:</span> <span>${formatValue(fixA)}</span></div>
-                  <div class="flex justify-between font-bold text-slate-100 border-t border-slate-700 pt-1"><span>資産合計:</span> <span>${formatValue(total)}</span></div>
+                  <div class="flex justify-between text-slate-300"><span>固定資産 (非流動資産):</span> <span>${formatValue(fixA)}</span></div>
+                  <div class="flex justify-between font-bold text-slate-100 border-t border-slate-700 pt-1"><span>資産合計 (総資産):</span> <span>${formatValue(total)}</span></div>
                 </div>
                 <div class="space-y-1.5">
                   <span class="block font-semibold text-rose-400 border-b border-rose-500/20 pb-1">負債・純資産の部</span>
                   <div class="flex justify-between text-slate-300"><span>流動負債:</span> <span>${formatValue(curL)}</span></div>
-                  <div class="flex justify-between text-slate-300"><span>固定負債:</span> <span>${formatValue(fixL)}</span></div>
-                  <div class="flex justify-between text-emerald-400"><span>純資産:</span> <span>${formatValue(eq)}</span></div>
+                  <div class="flex justify-between text-slate-300"><span>固定負債 (非流動負債):</span> <span>${formatValue(fixL)}</span></div>
+                  <div class="flex justify-between text-emerald-400"><span>純資産 (持分):</span> <span>${formatValue(eq)}</span></div>
                   <div class="flex justify-between font-bold text-slate-100 border-t border-slate-700 pt-1"><span>負債純資産計:</span> <span>${formatValue(curL + fixL + eq)}</span></div>
                 </div>
               </div>

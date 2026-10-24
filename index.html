@@ -77,9 +77,8 @@
   </main>
 
   <script>
-    // ★ ここにご自身のGoogleスプレッドシートIDを入力してください（GASは不要です）
-    const SPREADSHEET_ID = "1706eZMw5etysfEOGa2bTmeowhw73Jq58JxJRb4yJpKA";
-    const SHEET_NAME = "Data";
+// ★「Webに公開」で生成されたURL（pubhtml）をそのまま貼り付けます
+    const PUB_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRsdWkBRiznMRDECkSsvS9KcUAQvWNAE5RJhxphdyCXPegEL_OooNR044c4mNVsws17d1MDIpPVwnIe/pub?output=csv";
 
     let charts = {};
 
@@ -93,17 +92,14 @@
     }
 
     async function loadDataFromSheet(targetCode) {
-      // Google Viz APIを使ってスプレッドシートをCSV形式で直接取得
-      const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
-
       try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("スプレッドシートの取得に失敗しました。Webに公開されているかご確認ください。");
+        // pubhtmlの末尾を pub?output=csv に変えて直接CSVを取得
+        const response = await fetch(PUB_URL);
+        if (!response.ok) throw new Error("CSVの取得に失敗しました。");
         
         const csvText = await response.text();
         const rows = parseCSV(csvText);
 
-        // データ抽出
         const parsedData = {
           code: targetCode,
           name: "",
@@ -124,13 +120,14 @@
         // ヘッダーを除いて1行ずつ走査
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
-          if (!row || row.length < 13) continue;
+          if (!row || row.length < 10) continue;
 
+          // A列（銘柄コード）の一致確認
           const rowCode = String(row[0]).trim();
           if (rowCode === String(targetCode)) {
             found = true;
-            parsedData.name = row[1];
-            parsedData.sector = row[2];
+            parsedData.name = row[1] || "該当銘柄";
+            parsedData.sector = row[2] || "-";
             parsedData.years.push(row[3]);
             parsedData.eps.push(parseFloat(row[4]) || 0);
             parsedData.bps.push(parseFloat(row[5]) || 0);
@@ -144,7 +141,7 @@
         }
 
         if (!found) {
-          alert(`銘柄コード (${targetCode}) のデータが見つかりませんでした。`);
+          alert(`銘柄コード (${targetCode}) のデータが見つかりませんでした。スプレッドシートのA列にコードが入っているかご確認ください。`);
           return;
         }
 
@@ -155,76 +152,16 @@
         renderCharts(parsedData);
       } catch (err) {
         console.error(err);
-        alert("データの取得に失敗しました。スプレッドシートの「Webに公開」設定をご確認ください。");
+        alert("データの取得に失敗しました。URLと公開設定をご確認ください。");
       }
     }
 
-    // CSVパーサー関数
+    // CSV解析用関数
     function parseCSV(text) {
       const lines = text.split('\n');
       return lines.map(line => {
-        // ダブルクォーテーションを考慮した分割処理
         return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.replace(/^"|"$/g, '').trim());
       });
-    }
-
-    function renderCharts(data) {
-      const labels = data.years.map(y => `${y}期`);
-
-      function drawChart(id, config) {
-        if (charts[id]) charts[id].destroy();
-        charts[id] = new Chart(document.getElementById(id).getContext('2d'), config);
-      }
-
-      // 1. EPS & BPS
-      drawChart('epsBpsChart', {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            { label: 'EPS (円)', data: data.eps, borderColor: '#06b6d4', backgroundColor: '#06b6d4', tension: 0.1 },
-            { label: 'BPS (円)', data: data.bps, borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.1 }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
-      });
-
-      // 2. 配当総額
-      drawChart('dividendChart', {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{ label: '配当総額', data: data.totalDividend, backgroundColor: '#10b981' }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
-      });
-
-      // 3. PBRバンド & 株価
-      drawChart('pbrChart', {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            { label: '株価', data: data.stockPrice, borderColor: '#f59e0b', borderWidth: 3, tension: 0.1 },
-            { label: 'PBR上限', data: data.pbrUpper, borderColor: '#64748b', borderDash: [5,5], tension: 0.1 },
-            { label: 'PBR平均', data: data.pbrAvg, borderColor: '#3b82f6', borderDash: [2,2], tension: 0.1 },
-            { label: 'PBR下限', data: data.pbrLower, borderColor: '#64748b', borderDash: [5,5], tension: 0.1 }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
-      });
-
-      // 4. 配当利回り
-      drawChart('yieldChart', {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{ label: '配当利回り', data: data.dividendYield, borderColor: '#6366f1', backgroundColor: '#6366f1', tension: 0.1 }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
-      });
-
-      lucide.createIcons();
     }
   </script>
 </body>

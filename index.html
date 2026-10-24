@@ -2,26 +2,15 @@
 <html lang="ja" class="h-full bg-slate-900 text-slate-100">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>API連携 財務データ分析ダッシュボード</title>
-  <!-- Tailwind CSS CDN -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>企業財務・株価分析ダッシュボード</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    * { -webkit-tap-highlight-color: transparent; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-  </style>
 </head>
-<body class="h-full flex flex-col font-sans bg-slate-900 text-slate-100 antialiased selection:bg-cyan-500 selection:text-white pb-10">
+<body class="h-full flex flex-col font-sans bg-slate-900 text-slate-100 antialiased pb-10">
 
-  <!-- TOP STICKY HEADER -->
+  <!-- HEADER -->
   <header class="sticky top-0 z-30 bg-slate-800/95 backdrop-blur border-b border-slate-700 shadow-lg">
     <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -30,367 +19,157 @@
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <span id="headerCode" class="px-2 py-0.5 rounded text-xs font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">7203</span>
+            <span id="headerCode" class="px-2 py-0.5 rounded text-xs font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">1717</span>
             <h1 id="headerName" class="text-base font-bold text-slate-100 leading-none">読み込み中...</h1>
           </div>
-          <p class="text-[11px] text-slate-400 mt-1" id="headerSector">Google Apps Script API 連携</p>
+          <p class="text-[11px] text-slate-400 mt-1" id="headerSector">スプレッドシート連携</p>
         </div>
       </div>
 
-      <!-- 会社切り替え用セレクトボックス -->
+      <!-- 銘柄コード入力 -->
       <div class="flex items-center gap-2">
-        <span class="text-xs text-slate-400 hidden sm:inline">銘柄選択:</span>
-        <select id="stockSelector" onchange="changeStock(this.value)" class="bg-slate-900 border border-slate-700 text-slate-100 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-500">
-          <option value="7203">7203 トヨタ自動車</option>
-          <option value="6758">6758 ソニーグループ</option>
-        </select>
+        <span class="text-xs text-slate-400">銘柄コード:</span>
+        <input type="text" id="stockInput" value="1717" class="w-20 bg-slate-900 border border-slate-700 text-slate-100 text-xs rounded-lg px-2 py-1.5 text-center focus:outline-none focus:border-cyan-500">
+        <button onclick="searchStock()" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium rounded-lg transition">表示</button>
       </div>
     </div>
   </header>
 
-  <!-- MAIN CONTAINER -->
+  <!-- MAIN -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 space-y-6">
 
-    <!-- Overview Header Card -->
-    <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-      <div>
-        <h2 class="text-xl font-bold text-slate-100">連結財務概要 (API連携)</h2>
-        <p class="text-xs text-slate-400 mt-1" id="latestInfoText">データを取得しています...</p>
-      </div>
-      <div class="flex items-center gap-4 bg-slate-900/80 p-3 rounded-xl border border-slate-700/60 self-stretch md:self-auto justify-around">
-        <div class="text-center md:text-right">
-          <span class="block text-xs text-slate-400">自己資本比率 (最新)</span>
-          <span class="text-lg font-extrabold text-cyan-400" id="latestEquityRatio">-%</span>
-        </div>
-        <div class="h-8 w-px bg-slate-700"></div>
-        <div class="text-center md:text-right">
-          <span class="block text-xs text-slate-400">当期純利益 (最新)</span>
-          <span class="text-lg font-extrabold text-emerald-400" id="latestNetIncome">-</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Key KPI Grid -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4" id="kpiGrid">
-      <!-- Dynamic KPI Cards -->
-    </div>
-
-    <!-- Balance Sheet Visualizer Chart -->
-    <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 md:p-6 shadow-lg space-y-4">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div class="flex items-center gap-2">
-          <i data-lucide="layers" class="w-5 h-5 text-cyan-400"></i>
-          <h2 class="text-base font-bold text-slate-100">BS (貸借対照表) 推移 & 構成比</h2>
-        </div>
-        <div class="flex items-center gap-2 text-xs">
-          <span class="text-slate-400">表示単位:</span>
-          <button onclick="toggleAmountUnit('hundred_million')" id="unitBtn1" class="px-3 py-1 rounded-lg bg-cyan-600 text-white font-medium transition">億円</button>
-          <button onclick="toggleAmountUnit('million')" id="unitBtn2" class="px-3 py-1 rounded-lg bg-slate-700 text-slate-300 transition">百万円</button>
-        </div>
-      </div>
-
-      <div class="relative w-full overflow-x-auto custom-scroll pb-2">
-        <div class="min-w-[650px] sm:min-w-full h-80">
-          <canvas id="bsChart"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <!-- Financial Ratios Charts Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="bg-slate-800 border border-slate-700/80 p-4 md:p-5 rounded-2xl shadow-lg space-y-3">
-        <h3 class="text-xs md:text-sm font-semibold text-slate-200 flex items-center gap-2">
-          <i data-lucide="pie-chart" class="w-4 h-4 text-cyan-400"></i>
-          自己資本比率 (%) & ROE (%) 推移
+    <!-- 2カラムグラフグリッド -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <!-- EPS & BPS -->
+      <div class="bg-slate-800 border border-slate-700/80 p-5 rounded-2xl shadow-lg space-y-3">
+        <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+          <i data-lucide="trending-up" class="w-4 h-4 text-cyan-400"></i> EPS & BPS 推移
         </h3>
-        <div class="h-60">
-          <canvas id="ratioChart1"></canvas>
-        </div>
+        <div class="h-64"><canvas id="epsBpsChart"></canvas></div>
       </div>
 
-      <div class="bg-slate-800 border border-slate-700/80 p-4 md:p-5 rounded-2xl shadow-lg space-y-3">
-        <h3 class="text-xs md:text-sm font-semibold text-slate-200 flex items-center gap-2">
-          <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
-          流動比率 (%) & 固定比率 (%) 推移
+      <!-- 配当総額 -->
+      <div class="bg-slate-800 border border-slate-700/80 p-5 rounded-2xl shadow-lg space-y-3">
+        <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+          <i data-lucide="dollar-sign" class="w-4 h-4 text-emerald-400"></i> 配当総額 推移
         </h3>
-        <div class="h-60">
-          <canvas id="ratioChart2"></canvas>
-        </div>
+        <div class="h-64"><canvas id="dividendChart"></canvas></div>
       </div>
-    </div>
 
-    <!-- Detailed Financial Table Accordion -->
-    <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 md:p-6 shadow-lg space-y-4">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm md:text-base font-bold text-slate-200 flex items-center gap-2">
-          <i data-lucide="list-filter" class="w-5 h-5 text-cyan-400"></i>
-          年別 財務詳細内訳 (API取得)
+      <!-- 株価 & PBRバンド -->
+      <div class="bg-slate-800 border border-slate-700/80 p-5 rounded-2xl shadow-lg space-y-3">
+        <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+          <i data-lucide="activity" class="w-4 h-4 text-amber-400"></i> 株価 & PBRバンド
         </h3>
-        <span class="text-xs text-slate-400">タップで詳細開閉</span>
+        <div class="h-64"><canvas id="pbrChart"></canvas></div>
       </div>
 
-      <div id="bsDetailAccordion" class="space-y-2">
-        <!-- Dynamic Accordion Content -->
+      <!-- 配当利回り -->
+      <div class="bg-slate-800 border border-slate-700/80 p-5 rounded-2xl shadow-lg space-y-3">
+        <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+          <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-400"></i> 配当利回り 推移
+        </h3>
+        <div class="h-64"><canvas id="yieldChart"></canvas></div>
       </div>
+
     </div>
-
   </main>
 
   <script>
-    // ★ ここにご自身で発行したGoogle Apps ScriptのウェブアプリURLを貼り付けてください
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyPyVtwqKUUsouCGdTEGn796Nw7dUFVjBjPuSxi-rcGqcsMrVRmya3bKZg05Ipim2lECw/exec";
+    // ★ ここにGoogle Apps ScriptのウェブアプリURLを貼り付け
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyS9i__oCceA5d_38j5n0UmdKbH9ZOuNHKY_ZzmowzJhZ9f7CFDxi-DB8eCHZi0-JxCRA/exec";
 
-    let fetchedStockData = null;
-    let amountUnit = "hundred_million"; 
-    let bsChartInstance = null;
-    let ratioChart1Instance = null;
-    let ratioChart2Instance = null;
+    let charts = {};
 
     window.addEventListener('DOMContentLoaded', () => {
-      loadFinancialDataFromAPI("7203"); // 初期表示はトヨタ
+      loadData("1717");
     });
 
-    function changeStock(code) {
-      loadFinancialDataFromAPI(code);
+    function searchStock() {
+      const code = document.getElementById('stockInput').value.trim();
+      if(code) loadData(code);
     }
 
-    async function loadFinancialDataFromAPI(code) {
+    async function loadData(code) {
       try {
-        const response = await fetch(`${GAS_API_URL}?code=${code}`);
-        if (!response.ok) throw new Error("ネットワークエラーが発生しました");
+        const res = await fetch(`${GAS_API_URL}?code=${code}`);
+        const data = await res.json();
         
-        const data = await response.json();
         if (data.error) {
           alert(data.error);
           return;
         }
 
-        fetchedStockData = data;
+        document.getElementById('headerCode').textContent = data.code;
+        document.getElementById('headerName').textContent = data.name;
+        document.getElementById('headerSector').textContent = data.sector;
 
-        document.getElementById('headerCode').textContent = fetchedStockData.code;
-        document.getElementById('headerName').textContent = fetchedStockData.name + "株式会社";
-        document.getElementById('headerSector').textContent = fetchedStockData.sector + " | API連携データ";
-
-        lucide.createIcons();
-        renderAllView();
-      } catch (error) {
-        console.error(error);
-        alert("APIからのデータ取得に失敗しました。GASのURLをご確認ください。");
+        renderCharts(data);
+      } catch (err) {
+        console.error(err);
+        alert("データの取得に失敗しました。");
       }
     }
 
-    function toggleAmountUnit(unit) {
-      amountUnit = unit;
-      document.getElementById('unitBtn1').className = unit === 'hundred_million' ? "px-3 py-1 rounded-lg bg-cyan-600 text-white font-medium transition" : "px-3 py-1 rounded-lg bg-slate-700 text-slate-300 transition";
-      document.getElementById('unitBtn2').className = unit === 'million' ? "px-3 py-1 rounded-lg bg-cyan-600 text-white font-medium transition" : "px-3 py-1 rounded-lg bg-slate-700 text-slate-300 transition";
-      if (fetchedStockData) renderAllView();
-    }
+    function renderCharts(data) {
+      const labels = data.years.map(y => `${y}期`);
 
-    function renderAllView() {
-      const data = fetchedStockData;
-      const latestIdx = data.years.length - 1;
-      const totalAssets = data.currentAssets[latestIdx] + data.fixedAssets[latestIdx];
-      const equityRatio = ((data.equity[latestIdx] / totalAssets) * 100).toFixed(1);
+      // 共通のグラフ描画ヘルパー
+      function drawChart(id, config) {
+        if (charts[id]) charts[id].destroy();
+        charts[id] = new Chart(document.getElementById(id).getContext('2d'), config);
+      }
 
-      document.getElementById('latestInfoText').textContent = `直近決算期: ${data.years[latestIdx]}年3月期 | 総資産: ${formatValue(totalAssets)}`;
-      document.getElementById('latestEquityRatio').textContent = `${equityRatio}%`;
-      document.getElementById('latestNetIncome').textContent = formatValue(data.netIncome[latestIdx]);
-
-      renderKPIGrid(data);
-      renderBSChart(data);
-      renderRatioCharts(data);
-      renderBSAccordion(data);
-    }
-
-    function renderKPIGrid(data) {
-      const idx = data.years.length - 1;
-      const prevIdx = idx - 1;
-
-      const totalAssets = data.currentAssets[idx] + data.fixedAssets[idx];
-      const prevAssets = data.currentAssets[prevIdx] + data.fixedAssets[prevIdx];
-      const assetsGrowth = (((totalAssets - prevAssets) / prevAssets) * 100).toFixed(1);
-
-      const netIncomeGrowth = (((data.netIncome[idx] - data.netIncome[prevIdx]) / Math.abs(data.netIncome[prevIdx])) * 100).toFixed(1);
-      const currentRatio = ((data.currentAssets[idx] / data.currentLiab[idx]) * 100).toFixed(1);
-      const fixedRatio = ((data.fixedAssets[idx] / data.equity[idx]) * 100).toFixed(1);
-
-      document.getElementById('kpiGrid').innerHTML = `
-        <div class="bg-slate-800 border border-slate-700/80 p-4 rounded-xl shadow-sm">
-          <span class="text-xs text-slate-400 block mb-1">総資産 (前年比)</span>
-          <span class="text-base sm:text-lg font-bold text-slate-100">${formatValue(totalAssets)}</span>
-          <span class="text-xs font-semibold ml-1 ${assetsGrowth >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
-            ${assetsGrowth >= 0 ? '↑' : '↓'}${Math.abs(assetsGrowth)}%
-          </span>
-        </div>
-
-        <div class="bg-slate-800 border border-slate-700/80 p-4 rounded-xl shadow-sm">
-          <span class="text-xs text-slate-400 block mb-1">当期純利益 (前年比)</span>
-          <span class="text-base sm:text-lg font-bold text-slate-100">${formatValue(data.netIncome[idx])}</span>
-          <span class="text-xs font-semibold ml-1 ${netIncomeGrowth >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
-            ${netIncomeGrowth >= 0 ? '↑' : '↓'}${Math.abs(netIncomeGrowth)}%
-          </span>
-        </div>
-
-        <div class="bg-slate-800 border border-slate-700/80 p-4 rounded-xl shadow-sm">
-          <span class="text-xs text-slate-400 block mb-1">流動比率 (短期安全性)</span>
-          <span class="text-base sm:text-lg font-bold text-cyan-400">${currentRatio}%</span>
-          <span class="text-[10px] text-slate-400 block mt-0.5">目安: 100%以上</span>
-        </div>
-
-        <div class="bg-slate-800 border border-slate-700/80 p-4 rounded-xl shadow-sm">
-          <span class="text-xs text-slate-400 block mb-1">固定比率 (長期安全性)</span>
-          <span class="text-base sm:text-lg font-bold text-indigo-400">${fixedRatio}%</span>
-          <span class="text-[10px] text-slate-400 block mt-0.5">目安: 100%以下</span>
-        </div>
-      `;
-    }
-
-    function renderBSChart(data) {
-      const ctx = document.getElementById('bsChart').getContext('2d');
-      if (bsChartInstance) bsChartInstance.destroy();
-
-      const mult = amountUnit === 'million' ? 100 : 1;
-
-      bsChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: data.years.map(y => `${y}期`),
-          datasets: [
-            { label: '流動資産', data: data.currentAssets.map(v => v * mult), backgroundColor: '#06b6d4', stack: 'Stack 0' },
-            { label: '固定資産 (非流動資産)', data: data.fixedAssets.map(v => v * mult), backgroundColor: '#3b82f6', stack: 'Stack 0' },
-            { label: '流動負債', data: data.currentLiab.map(v => v * mult), backgroundColor: '#f43f5e', stack: 'Stack 1' },
-            { label: '固定負債 (非流動負債)', data: data.fixedLiab.map(v => v * mult), backgroundColor: '#fb7185', stack: 'Stack 1' },
-            { label: '純資産 (持分)', data: data.equity.map(v => v * mult), backgroundColor: '#10b981', stack: 'Stack 1' }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'top', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 } },
-            tooltip: {
-              callbacks: {
-                label: (context) => `${context.dataset.label}: ${context.raw.toLocaleString()} ${amountUnit === 'million' ? '百万円' : '億円'}`
-              }
-            }
-          },
-          scales: {
-            x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#334155' } },
-            y: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#334155' } }
-          }
-        }
-      });
-    }
-
-    function renderRatioCharts(data) {
-      const ctx1 = document.getElementById('ratioChart1').getContext('2d');
-      if (ratioChart1Instance) ratioChart1Instance.destroy();
-
-      ratioChart1Instance = new Chart(ctx1, {
+      // 1. EPS & BPS
+      drawChart('epsBpsChart', {
         type: 'line',
         data: {
-          labels: data.years.map(y => `${y}期`),
+          labels: labels,
           datasets: [
-            {
-              label: '自己資本比率 (%)',
-              data: data.years.map((y, i) => ((data.equity[i] / (data.currentAssets[i] + data.fixedAssets[i])) * 100).toFixed(1)),
-              borderColor: '#06b6d4', backgroundColor: '#06b6d4', tension: 0.2
-            },
-            {
-              label: 'ROE (%)',
-              data: data.years.map((y, i) => ((data.netIncome[i] / data.equity[i]) * 100).toFixed(1)),
-              borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.2
-            }
+            { label: 'EPS (円)', data: data.eps, borderColor: '#06b6d4', backgroundColor: '#06b6d4', tension: 0.1 },
+            { label: 'BPS (円)', data: data.bps, borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.1 }
           ]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
-          scales: {
-            x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#334155' } },
-            y: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#334155' } }
-          }
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
       });
 
-      const ctx2 = document.getElementById('ratioChart2').getContext('2d');
-      if (ratioChart2Instance) ratioChart2Instance.destroy();
-
-      ratioChart2Instance = new Chart(ctx2, {
+      // 2. 配当総額
+      drawChart('dividendChart', {
         type: 'bar',
         data: {
-          labels: data.years.map(y => `${y}期`),
+          labels: labels,
+          datasets: [{ label: '配当総額', data: data.totalDividend, backgroundColor: '#10b981' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
+      });
+
+      // 3. PBRバンド & 株価
+      drawChart('pbrChart', {
+        type: 'line',
+        data: {
+          labels: labels,
           datasets: [
-            { label: '流動比率 (%)', data: data.years.map((y, i) => ((data.currentAssets[i] / data.currentLiab[i]) * 100).toFixed(1)), backgroundColor: '#3b82f6' },
-            { label: '固定比率 (%)', data: data.years.map((y, i) => ((data.fixedAssets[i] / data.equity[i]) * 100).toFixed(1)), backgroundColor: '#f43f5e' }
+            { label: '株価', data: data.stockPrice, borderColor: '#f59e0b', borderWidth: 3, tension: 0.1 },
+            { label: 'PBR上限', data: data.pbrUpper, borderColor: '#64748b', borderDash: [5,5], tension: 0.1 },
+            { label: 'PBR平均', data: data.pbrAvg, borderColor: '#3b82f6', borderDash: [2,2], tension: 0.1 },
+            { label: 'PBR下限', data: data.pbrLower, borderColor: '#64748b', borderDash: [5,5], tension: 0.1 }
           ]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
-          scales: {
-            x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#334155' } },
-            y: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#334155' } }
-          }
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
       });
-    }
 
-    function renderBSAccordion(data) {
-      const container = document.getElementById('bsDetailAccordion');
-      container.innerHTML = data.years.slice().reverse().map((year, revIdx) => {
-        const idx = data.years.length - 1 - revIdx;
-        const curA = data.currentAssets[idx];
-        const fixA = data.fixedAssets[idx];
-        const curL = data.currentLiab[idx];
-        const fixL = data.fixedLiab[idx];
-        const eq = data.equity[idx];
-        const total = curA + fixA;
+      // 4. 配当利回り
+      drawChart('yieldChart', {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{ label: '配当利回り', data: data.dividendYield, borderColor: '#6366f1', backgroundColor: '#6366f1', tension: 0.1 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
+      });
 
-        return `
-          <div class="border border-slate-700/60 rounded-xl overflow-hidden bg-slate-900/40">
-            <button onclick="toggleAccordion('acc-${year}')" class="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-800/50 transition">
-              <div class="flex items-center gap-3">
-                <span class="font-bold text-sm text-cyan-400">${year}年3月期</span>
-                <span class="text-xs text-slate-400">総資産: ${formatValue(total)} | 純利益: ${formatValue(data.netIncome[idx])}</span>
-              </div>
-              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
-            </button>
-            <div id="acc-${year}" class="hidden p-4 border-t border-slate-700/50 bg-slate-900/80 text-xs md:text-sm space-y-3">
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-1.5">
-                  <span class="block font-semibold text-cyan-400 border-b border-cyan-500/20 pb-1">資産の部</span>
-                  <div class="flex justify-between text-slate-300"><span>流動資産:</span> <span>${formatValue(curA)}</span></div>
-                  <div class="flex justify-between text-slate-300"><span>固定資産 (非流動資産):</span> <span>${formatValue(fixA)}</span></div>
-                  <div class="flex justify-between font-bold text-slate-100 border-t border-slate-700 pt-1"><span>資産合計 (総資産):</span> <span>${formatValue(total)}</span></div>
-                </div>
-                <div class="space-y-1.5">
-                  <span class="block font-semibold text-rose-400 border-b border-rose-500/20 pb-1">負債・純資産の部</span>
-                  <div class="flex justify-between text-slate-300"><span>流動負債:</span> <span>${formatValue(curL)}</span></div>
-                  <div class="flex justify-between text-slate-300"><span>固定負債 (非流動負債):</span> <span>${formatValue(fixL)}</span></div>
-                  <div class="flex justify-between text-emerald-400"><span>純資産 (持分):</span> <span>${formatValue(eq)}</span></div>
-                  <div class="flex justify-between font-bold text-slate-100 border-t border-slate-700 pt-1"><span>負債純資産計:</span> <span>${formatValue(curL + fixL + eq)}</span></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
       lucide.createIcons();
-    }
-
-    function toggleAccordion(id) {
-      const el = document.getElementById(id);
-      if (el) el.classList.toggle('hidden');
-    }
-
-    function formatValue(valInHundredMillion) {
-      if (amountUnit === 'million') {
-        return (valInHundredMillion * 100).toLocaleString() + '百万円';
-      }
-      return valInHundredMillion.toLocaleString() + '億円';
     }
   </script>
 </body>

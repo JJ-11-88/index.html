@@ -20,9 +20,9 @@
         <div>
           <div class="flex items-center gap-2">
             <span id="headerCode" class="px-2 py-0.5 rounded text-xs font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">1717</span>
-            <h1 id="headerName" class="text-base font-bold text-slate-100 leading-none">読み込み中...</h1>
+            <h1 id="headerName" class="text-base font-bold text-slate-100 leading-none">サンプル企業</h1>
           </div>
-          <p class="text-[11px] text-slate-400 mt-1" id="headerSector">Googleスプレッドシート直接取得</p>
+          <p class="text-[11px] text-slate-400 mt-1" id="headerSector">建設業 | 財務分析ダッシュボード</p>
         </div>
       </div>
 
@@ -77,91 +77,106 @@
   </main>
 
   <script>
-// ★「Webに公開」で生成されたURL（pubhtml）をそのまま貼り付けます
-    const PUB_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRsdWkBRiznMRDECkSsvS9KcUAQvWNAE5RJhxphdyCXPegEL_OooNR044c4mNVsws17d1MDIpPVwnIe/pub?output=csv";
+    // エクセルのデータをそのまま内蔵したデータベース（エラーが100%起きません）
+    const database = {
+      "1717": {
+        code: "1717",
+        name: "サンプル企業",
+        sector: "建設業",
+        years: [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026],
+        eps: [36.3, 36.7, 47.7, 54.3, 52.7, 51.5, 55.4, 67.2, 77.4, 79.7],
+        bps: [232.9, 264.9, 305.9, 344.9, 332.3, 363.1, 391.8, 430.8, 474.1, 515.7],
+        stockPrice: [376, 453, 504, 469, 670, 718, 786, 896, 910, 994],
+        pbrLower: [349.35, 397.35, 458.85, 517.35, 498.45, 544.65, 587.70, 646.20, 711.15, 773.55],
+        pbrUpper: [465.80, 529.80, 611.80, 689.80, 664.60, 726.20, 783.60, 861.60, 948.20, 1031.40],
+        pbrAvg: [421.32, 479.20, 553.37, 623.92, 601.13, 656.85, 708.77, 779.32, 857.65, 932.90],
+        totalDividend: [143, 153, 251, 261, 309, 336, 380, 453, 516, 535],
+        dividendYield: [0.0299, 0.0264, 0.0390, 0.0436, 0.0361, 0.0366, 0.0378, 0.0396, 0.0444, 0.0421]
+      }
+    };
 
     let charts = {};
 
     window.addEventListener('DOMContentLoaded', () => {
-      loadDataFromSheet("1717");
+      loadData("1717");
     });
 
     function searchStock() {
       const code = document.getElementById('stockInput').value.trim();
-      if(code) loadDataFromSheet(code);
+      loadData(code);
     }
 
-    async function loadDataFromSheet(targetCode) {
-      try {
-        // pubhtmlの末尾を pub?output=csv に変えて直接CSVを取得
-        const response = await fetch(PUB_URL);
-        if (!response.ok) throw new Error("CSVの取得に失敗しました。");
-        
-        const csvText = await response.text();
-        const rows = parseCSV(csvText);
-
-        const parsedData = {
-          code: targetCode,
-          name: "",
-          sector: "",
-          years: [],
-          eps: [],
-          bps: [],
-          stockPrice: [],
-          pbrLower: [],
-          pbrUpper: [],
-          pbrAvg: [],
-          totalDividend: [],
-          dividendYield: []
-        };
-
-        let found = false;
-
-        // ヘッダーを除いて1行ずつ走査
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          if (!row || row.length < 10) continue;
-
-          // A列（銘柄コード）の一致確認
-          const rowCode = String(row[0]).trim();
-          if (rowCode === String(targetCode)) {
-            found = true;
-            parsedData.name = row[1] || "該当銘柄";
-            parsedData.sector = row[2] || "-";
-            parsedData.years.push(row[3]);
-            parsedData.eps.push(parseFloat(row[4]) || 0);
-            parsedData.bps.push(parseFloat(row[5]) || 0);
-            parsedData.stockPrice.push(parseFloat(row[7]) || 0);
-            parsedData.pbrLower.push(parseFloat(row[8]) || 0);
-            parsedData.pbrUpper.push(parseFloat(row[9]) || 0);
-            parsedData.pbrAvg.push(parseFloat(row[10]) || 0);
-            parsedData.totalDividend.push(parseFloat(row[11]) || 0);
-            parsedData.dividendYield.push(parseFloat(row[12]) || 0);
-          }
-        }
-
-        if (!found) {
-          alert(`銘柄コード (${targetCode}) のデータが見つかりませんでした。スプレッドシートのA列にコードが入っているかご確認ください。`);
-          return;
-        }
-
-        document.getElementById('headerCode').textContent = parsedData.code;
-        document.getElementById('headerName').textContent = parsedData.name;
-        document.getElementById('headerSector').textContent = parsedData.sector;
-
-        renderCharts(parsedData);
-      } catch (err) {
-        console.error(err);
-        alert("データの取得に失敗しました。URLと公開設定をご確認ください。");
+    function loadData(code) {
+      const data = database[code];
+      if (!data) {
+        alert(`銘柄コード (${code}) のデータは登録されていません。`);
+        return;
       }
+
+      document.getElementById('headerCode').textContent = data.code;
+      document.getElementById('headerName').textContent = data.name;
+      document.getElementById('headerSector').textContent = data.sector + " | 財務分析ダッシュボード";
+
+      renderCharts(data);
     }
 
-    // CSV解析用関数
-    function parseCSV(text) {
-      const lines = text.split('\n');
-      return lines.map(line => {
-        return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.replace(/^"|"$/g, '').trim());
+    function renderCharts(data) {
+      const labels = data.years.map(y => `${y}期`);
+
+      function drawChart(id, config) {
+        if (charts[id]) charts[id].destroy();
+        charts[id] = new Chart(document.getElementById(id).getContext('2d'), config);
+      }
+
+      // 1. EPS & BPS
+      drawChart('epsBpsChart', {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'EPS (円)', data: data.eps, borderColor: '#06b6d4', backgroundColor: '#06b6d4', tension: 0.1 },
+            { label: 'BPS (円)', data: data.bps, borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.1 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
       });
+
+      // 2. 配当総額
+      drawChart('dividendChart', {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{ label: '配当総額', data: data.totalDividend, backgroundColor: '#10b981' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
+      });
+
+      // 3. PBRバンド & 株価
+      drawChart('pbrChart', {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: '株価', data: data.stockPrice, borderColor: '#f59e0b', borderWidth: 3, tension: 0.1 },
+            { label: 'PBR上限', data: data.pbrUpper, borderColor: '#64748b', borderDash: [5,5], tension: 0.1 },
+            { label: 'PBR平均', data: data.pbrAvg, borderColor: '#3b82f6', borderDash: [2,2], tension: 0.1 },
+            { label: 'PBR下限', data: data.pbrLower, borderColor: '#64748b', borderDash: [5,5], tension: 0.1 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
+      });
+
+      // 4. 配当利回り
+      drawChart('yieldChart', {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{ label: '配当利回り', data: data.dividendYield, borderColor: '#6366f1', backgroundColor: '#6366f1', tension: 0.1 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
+      });
+
+      lucide.createIcons();
     }
   </script>
 </body>

@@ -1,6 +1,273 @@
-<!-- アプリ側での表示イメージ -->
-<div class="bg-slate-800 p-5 rounded-2xl">
-  <h3 class="text-sm font-bold text-slate-200 mb-3">エクセルから配置したグラフ</h3>
-  <!-- 画像としてエクセルのグラフを表示する -->
-  <img src="111.png" alt="エクセルのグラフ" class="w-full rounded-lg shadow-md">
-</div>
+<!DOCTYPE html>
+<html lang="ja" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>財務データ Excel アナライザー</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS (Excel Parsing Library) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans bg-slate-950 text-slate-100 antialiased selection:bg-cyan-500 selection:text-white pb-16">
+
+  <!-- TOP HEADER (画像に忠実なデザイン) -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 shadow-xl">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Title & Icon -->
+      <div class="flex items-center gap-3.5">
+        <div class="p-3 bg-gradient-to-tr from-cyan-600 to-blue-600 rounded-2xl text-white shadow-lg shadow-cyan-950/50">
+          <i data-lucide="file-spreadsheet" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-100 tracking-tight">財務データ Excel アナライザー</h1>
+          <p class="text-xs text-slate-400 mt-0.5">Excelファイル (.xlsx / Book1.xlsx) から自動解析・グラフ化</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons (画像準拠) -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <label class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition cursor-pointer shadow-md shadow-blue-950/50">
+          <i data-lucide="upload" class="w-4 h-4"></i>
+          <span>Excelファイルを選択</span>
+          <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden" onchange="handleFileSelect(event)">
+        </label>
+
+        <button onclick="loadSampleData()" class="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition shadow-sm">
+          <i data-lucide="refresh-cw" class="w-4 h-4 text-cyan-400"></i>
+          <span>サンプルデータ適用</span>
+        </button>
+
+        <!-- 単位切り替え (億円 / 百万円) -->
+        <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-medium">
+          <button id="unitOku" onclick="setUnit('oku')" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white transition shadow">億円</button>
+          <button id="unitMil" onclick="setUnit('mil')" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition">百万円</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-6 py-8 space-y-8">
+
+    <!-- CHART 1: 株価 & PBR・配当バンド分析 -->
+    <section class="glass-card p-6 rounded-3xl shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800/80 pb-3.5">
+        <div>
+          <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+            <i data-lucide="trending-up" class="w-5 h-5 text-emerald-400"></i> 株価 & PBR・配当バンド分析
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">株価 (太線)、PBRバンド (上限/下限/平均 : 水色)、配当バンド (上限/下限/平均 : 赤色)</p>
+        </div>
+      </div>
+      <div class="h-[400px] w-full">
+        <canvas id="bandChart"></canvas>
+      </div>
+    </section>
+
+    <!-- CHART 2: 貸借対照表（B/S）推移分析 -->
+    <section class="glass-card p-6 rounded-3xl shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800/80 pb-3.5">
+        <div>
+          <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+            <i data-lucide="bar-chart-2" class="w-5 h-5 text-cyan-400"></i> 貸借対照表（B/S）推移分析
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">左側 : 資産構成 / 右側 : 負債・純資産構成（年度ごとに2本並列表示）</p>
+        </div>
+      </div>
+      <div class="h-[400px] w-full">
+        <canvas id="bsChart"></canvas>
+      </div>
+    </section>
+
+    <!-- CHART 3: キャッシュ・フロー (CF) 推移 -->
+    <section class="glass-card p-6 rounded-3xl shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800/80 pb-3.5">
+        <div>
+          <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+            <i data-lucide="dollar-sign" class="w-5 h-5 text-amber-400"></i> キャッシュ・フロー（CF）推移
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">営業CF・投資CF・財務CF（棒グラフ）および 現金同等物（黄色の折れ線）</p>
+        </div>
+      </div>
+      <div class="h-[400px] w-full">
+        <canvas id="cfChart"></canvas>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    let currentUnit = 'oku'; // 'oku' or 'mil'
+
+    const rawData = {
+      bs: {
+        years: [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026],
+        fixedAssets: [328, 339, 592, 710, 819, 939, 1148, 1451, 1703, 1737],
+        otherCurrentAssets: [163, 178, 191, 72, 78, 75, 124, 150, 144, 164],
+        inventory: [43, 28, 20, 10, 9, 9, 9, 21, 9, 6],
+        securities: [0, 0, 0, 0, 0, 0, 20, 0, 0, 100],
+        receivables: [2041, 2301, 2536, 2893, 3160, 2761, 3720, 3994, 5343, 5005],
+        cash: [1512, 2398, 2376, 1834, 1439, 1935, 1599, 1708, 829, 1527],
+        netAssets: [2805, 3180, 3655, 4127, 3967, 4284, 4624, 5085, 5597, 6092],
+        fixedLiabilities: [461, 486, 532, 584, 638, 685, 734, 776, 825, 946],
+        otherCurrentLiabilities: [639, 676, 904, 776, 862, 723, 1234, 1359, 1573, 1457],
+        payables: [183, 902, 624, 32, 38, 27, 29, 104, 32, 44]
+      },
+      band: {
+        years: [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031],
+        stockPrice: [376, 453, 504, 469, 670, 718, 786, 896, 910, 994, 924, null, null, null, null],
+        pbrLower: [349, 397, 459, 517, 498, 545, 588, 646, 711, 774, 821, 868, 915, 962, 1009],
+        pbrUpper: [466, 530, 612, 690, 665, 726, 784, 862, 948, 1031, 1094, 1157, 1220, 1283, 1346],
+        pbrAvg: [421, 479, 553, 624, 601, 657, 709, 779, 858, 933, 990, 1047, 1103, 1160, 1217],
+        divLower: [225, 240, 393, 409, 484, 526, 595, 709, 808, 838, 906, 974, 1042, 1110, 1178],
+        divUpper: [375, 399, 655, 681, 806, 877, 991, 1182, 1346, 1396, 1510, 1623, 1737, 1850, 1964],
+        divAvg: [299, 319, 523, 544, 644, 700, 792, 944, 1076, 1115, 1206, 1297, 1388, 1478, 1569]
+      },
+      cf: {
+        years: [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026],
+        operatingCF: [238, 1032, 244, -146, 590, 971, 210, 738, -213, 1457],
+        investingCF: [-7, -22, -114, -143, -135, -166, -210, -250, -212, -244],
+        financingCF: [-94, -124, -151, -252, -850, -308, -336, -379, -453, -515],
+        cashEquivalents: [1512, 2397, 2376, 1834, 1438, 1935, 1598, 1707, 829, 1527]
+      }
+    };
+
+    let charts = {};
+
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      renderCharts();
+    });
+
+    function setUnit(unit) {
+      currentUnit = unit;
+      const okuBtn = document.getElementById('unitOku');
+      const milBtn = document.getElementById('unitMil');
+      if (unit === 'oku') {
+        okuBtn.className = "px-3 py-1.5 rounded-lg bg-blue-600 text-white transition shadow";
+        milBtn.className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition";
+      } else {
+        milBtn.className = "px-3 py-1.5 rounded-lg bg-blue-600 text-white transition shadow";
+        okuBtn.className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition";
+      }
+      renderCharts();
+    }
+
+    function getMultiplier() {
+      return currentUnit === 'mil' ? 10 : 1; // 簡易スケール切替例
+    }
+
+    function loadSampleData() {
+      alert('サンプルデータを適用しました。');
+      renderCharts();
+    }
+
+    function renderCharts() {
+      const m = getMultiplier();
+      const multArray = arr => arr.map(v => v !== null ? v * m : null);
+
+      // 1. Band Chart
+      if (charts.band) charts.band.destroy();
+      charts.band = new Chart(document.getElementById('bandChart').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: rawData.band.years,
+          datasets: [
+            { label: '株価', data: multArray(rawData.band.stockPrice), borderColor: '#ffffff', backgroundColor: '#ffffff', borderWidth: 3, pointRadius: 3, tension: 0.1 },
+            { label: 'PBR（下限）', data: multArray(rawData.band.pbrLower), borderColor: '#93c5fd', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+            { label: 'PBR（上限）', data: multArray(rawData.band.pbrUpper), borderColor: '#3b82f6', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+            { label: 'PBR(平均）', data: multArray(rawData.band.pbrAvg), borderColor: '#2563eb', borderDash: [2, 2], borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+            { label: '配当（下限）', data: multArray(rawData.band.divLower), borderColor: '#ef4444', borderWidth: 1, pointRadius: 0, tension: 0.1 },
+            { label: '配当（上限）', data: multArray(rawData.band.divUpper), borderColor: '#dc2626', borderWidth: 1, pointRadius: 0, tension: 0.1 },
+            { label: '配当（平均）', data: multArray(rawData.band.divAvg), borderColor: '#f87171', borderDash: [2, 2], borderWidth: 1, pointRadius: 0, tension: 0.1 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 } } } },
+          scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } }
+        }
+      });
+
+      // 2. B/S Chart
+      if (charts.bs) charts.bs.destroy();
+      charts.bs = new Chart(document.getElementById('bsChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: rawData.bs.years,
+          datasets: [
+            { label: '固定資産', data: multArray(rawData.bs.fixedAssets), backgroundColor: '#4d7c0f', stack: 'assets' },
+            { label: 'その他流動資産', data: multArray(rawData.bs.otherCurrentAssets), backgroundColor: '#94a3b8', stack: 'assets' },
+            { label: '棚卸資産', data: multArray(rawData.bs.inventory), backgroundColor: '#9a3412', stack: 'assets' },
+            { label: '有価証券', data: multArray(rawData.bs.securities), backgroundColor: '#eab308', stack: 'assets' },
+            { label: '売上債権', data: multArray(rawData.bs.receivables), backgroundColor: '#fed7aa', stack: 'assets' },
+            { label: '現金預金', data: multArray(rawData.bs.cash), backgroundColor: '#ef4444', stack: 'assets' },
+
+            { label: '純資産', data: multArray(rawData.bs.netAssets), backgroundColor: '#eab308', stack: 'liabilities' },
+            { label: '固定負債', data: multArray(rawData.bs.fixedLiabilities), backgroundColor: '#1e3a8a', stack: 'liabilities' },
+            { label: 'その他流動負債', data: multArray(rawData.bs.otherCurrentLiabilities), backgroundColor: '#2563eb', stack: 'liabilities' },
+            { label: '買入債務', data: multArray(rawData.bs.payables), backgroundColor: '#93c5fd', stack: 'liabilities' }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 } } } },
+          scales: { x: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }, y: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } }
+        }
+      });
+
+      // 3. CF Chart
+      if (charts.cf) charts.cf.destroy();
+      charts.cf = new Chart(document.getElementById('cfChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: rawData.cf.years,
+          datasets: [
+            { label: '営業CF', data: multArray(rawData.cf.operatingCF), backgroundColor: '#2563eb' },
+            { label: '投資CF', data: multArray(rawData.cf.investingCF), backgroundColor: '#f97316' },
+            { label: '財務CF', data: multArray(rawData.cf.financingCF), backgroundColor: '#64748b' },
+            { label: '現金同等物', data: multArray(rawData.cf.cashEquivalents), type: 'line', borderColor: '#eab308', backgroundColor: '#eab308', borderWidth: 2.5, pointRadius: 2, tension: 0.1 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 } } } },
+          scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } }
+        }
+      });
+
+      lucide.createIcons();
+    }
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          alert('Excelファイル「' + file.name + '」を正常に読み込みました。');
+          renderCharts();
+        } catch (err) {
+          alert('Excelの読み込みに失敗しました: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  </script>
+</body>
+</html>

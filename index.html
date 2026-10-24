@@ -22,7 +22,7 @@
             <span id="headerCode" class="px-2 py-0.5 rounded text-xs font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">1717</span>
             <h1 id="headerName" class="text-base font-bold text-slate-100 leading-none">読み込み中...</h1>
           </div>
-          <p class="text-[11px] text-slate-400 mt-1" id="headerSector">スプレッドシート連携</p>
+          <p class="text-[11px] text-slate-400 mt-1" id="headerSector">Googleスプレッドシート直接取得</p>
         </div>
       </div>
 
@@ -77,45 +77,100 @@
   </main>
 
   <script>
-    // ★ ここにGoogle Apps ScriptのウェブアプリURLを貼り付け
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyS9i__oCceA5d_38j5n0UmdKbH9ZOuNHKY_ZzmowzJhZ9f7CFDxi-DB8eCHZi0-JxCRA/exec";
+    // ★ ここにご自身のGoogleスプレッドシートIDを入力してください（GASは不要です）
+    const SPREADSHEET_ID = "1706eZMw5etysfEOGa2bTmeowhw73Jq58JxJRb4yJpKA";
+    const SHEET_NAME = "Data";
 
     let charts = {};
 
     window.addEventListener('DOMContentLoaded', () => {
-      loadData("1717");
+      loadDataFromSheet("1717");
     });
 
     function searchStock() {
       const code = document.getElementById('stockInput').value.trim();
-      if(code) loadData(code);
+      if(code) loadDataFromSheet(code);
     }
 
-    async function loadData(code) {
+    async function loadDataFromSheet(targetCode) {
+      // Google Viz APIを使ってスプレッドシートをCSV形式で直接取得
+      const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+
       try {
-        const res = await fetch(`${GAS_API_URL}?code=${code}`);
-        const data = await res.json();
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("スプレッドシートの取得に失敗しました。Webに公開されているかご確認ください。");
         
-        if (data.error) {
-          alert(data.error);
+        const csvText = await response.text();
+        const rows = parseCSV(csvText);
+
+        // データ抽出
+        const parsedData = {
+          code: targetCode,
+          name: "",
+          sector: "",
+          years: [],
+          eps: [],
+          bps: [],
+          stockPrice: [],
+          pbrLower: [],
+          pbrUpper: [],
+          pbrAvg: [],
+          totalDividend: [],
+          dividendYield: []
+        };
+
+        let found = false;
+
+        // ヘッダーを除いて1行ずつ走査
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || row.length < 13) continue;
+
+          const rowCode = String(row[0]).trim();
+          if (rowCode === String(targetCode)) {
+            found = true;
+            parsedData.name = row[1];
+            parsedData.sector = row[2];
+            parsedData.years.push(row[3]);
+            parsedData.eps.push(parseFloat(row[4]) || 0);
+            parsedData.bps.push(parseFloat(row[5]) || 0);
+            parsedData.stockPrice.push(parseFloat(row[7]) || 0);
+            parsedData.pbrLower.push(parseFloat(row[8]) || 0);
+            parsedData.pbrUpper.push(parseFloat(row[9]) || 0);
+            parsedData.pbrAvg.push(parseFloat(row[10]) || 0);
+            parsedData.totalDividend.push(parseFloat(row[11]) || 0);
+            parsedData.dividendYield.push(parseFloat(row[12]) || 0);
+          }
+        }
+
+        if (!found) {
+          alert(`銘柄コード (${targetCode}) のデータが見つかりませんでした。`);
           return;
         }
 
-        document.getElementById('headerCode').textContent = data.code;
-        document.getElementById('headerName').textContent = data.name;
-        document.getElementById('headerSector').textContent = data.sector;
+        document.getElementById('headerCode').textContent = parsedData.code;
+        document.getElementById('headerName').textContent = parsedData.name;
+        document.getElementById('headerSector').textContent = parsedData.sector;
 
-        renderCharts(data);
+        renderCharts(parsedData);
       } catch (err) {
         console.error(err);
-        alert("データの取得に失敗しました。");
+        alert("データの取得に失敗しました。スプレッドシートの「Webに公開」設定をご確認ください。");
       }
+    }
+
+    // CSVパーサー関数
+    function parseCSV(text) {
+      const lines = text.split('\n');
+      return lines.map(line => {
+        // ダブルクォーテーションを考慮した分割処理
+        return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.replace(/^"|"$/g, '').trim());
+      });
     }
 
     function renderCharts(data) {
       const labels = data.years.map(y => `${y}期`);
 
-      // 共通のグラフ描画ヘルパー
       function drawChart(id, config) {
         if (charts[id]) charts[id].destroy();
         charts[id] = new Chart(document.getElementById(id).getContext('2d'), config);

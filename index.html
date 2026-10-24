@@ -1,540 +1,133 @@
 <!DOCTYPE html>
-<html lang="ja" class="dark">
+<html lang="ja" class="h-full bg-slate-900 text-slate-100">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Toyota Financials Dashboard (7203)</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        darkBg: '#0b0f17',
-                        cardBg: '#151c28',
-                        cardBorder: '#222f43',
-                        toyotaRed: '#eb0a1e',
-                        accentBlue: '#3b82f6',
-                        accentGreen: '#10b981',
-                        accentYellow: '#f59e0b',
-                        accentPurple: '#8b5cf6'
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #0b0f17;
-            color: #f3f4f6;
-        }
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0b0f17;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #222f43;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #374151;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>トヨタ自動車 (7203) BS・財務データ分析</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+  </style>
 </head>
-<body class="min-h-screen pb-12">
+<body class="h-full flex flex-col font-sans bg-slate-900 text-slate-100 antialiased selection:bg-cyan-500 selection:text-white pb-10">
 
-    <!-- Header Section -->
-    <header class="border-b border-cardBorder bg-cardBg/80 backdrop-blur sticky top-0 z-50 px-4 py-4 md:px-8">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <!-- Company Info (Toyota Only) -->
-            <div class="flex items-center space-x-4">
-                <div class="w-12 h-12 rounded-xl bg-toyotaRed/10 border border-toyotaRed/30 flex items-center justify-center font-bold text-toyotaRed text-xl shadow-lg shadow-toyotaRed/5">
-                    7203
-                </div>
-                <div>
-                    <div class="flex items-center space-x-2">
-                        <h1 class="text-2xl font-bold text-white tracking-tight">トヨタ自動車</h1>
-                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-toyotaRed/20 text-red-400 border border-toyotaRed/30">東証プライム</span>
-                    </div>
-                    <p class="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
-                        <span>Toyota Motor Corporation</span>
-                        <span>•</span>
-                        <span>輸送用機器</span>
-                        <span>•</span>
-                        <span>決算月: 3月</span>
-                    </p>
-                </div>
-            </div>
-
-            <!-- Amount Unit Toggle -->
-            <div class="flex items-center space-x-3 bg-darkBg p-1.5 rounded-xl border border-cardBorder self-start md:self-auto">
-                <span class="text-xs text-gray-400 pl-2">表示単位:</span>
-                <button id="unitOkuBtn" onclick="setUnit('oku')" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-accentBlue text-white shadow">
-                    億円
-                </button>
-                <button id="unitHyakuBtn" onclick="setUnit('hyaku')" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-gray-400 hover:text-white">
-                    百万円
-                </button>
-            </div>
+  <!-- TOP STICKY HEADER -->
+  <header class="sticky top-0 z-30 bg-slate-800/95 backdrop-blur border-b border-slate-700 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-lg text-white shadow-md">
+          <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
         </div>
-    </header>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-xs font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">7203</span>
+            <h1 class="text-base font-bold text-slate-100 leading-none">トヨタ自動車株式会社</h1>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">輸送用機器 | 単一銘柄 財務分析レポート</p>
+        </div>
+      </div>
+    </div>
+  </header>
 
-    <main class="max-w-7xl mx-auto px-4 md:px-8 mt-6 space-y-8">
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 space-y-6">
 
-        <!-- KPI Summary Cards -->
-        <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <!-- Total Assets -->
-            <div class="bg-cardBg border border-cardBorder p-4 rounded-2xl relative overflow-hidden">
-                <div class="flex justify-between items-start text-gray-400 text-xs mb-2">
-                    <span>総資産 (直近)</span>
-                    <i data-lucide="wallet" class="w-4 h-4 text-accentBlue"></i>
-                </div>
-                <div id="kpiTotalAssets" class="text-xl md:text-2xl font-bold text-white">--</div>
-                <div class="text-xs text-gray-400 mt-1">2024/03期</div>
-            </div>
+    <!-- Overview Header Card -->
+    <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div>
+        <h2 class="text-xl font-bold text-slate-100">トヨタ自動車 財務概要</h2>
+        <p class="text-xs text-slate-400 mt-1" id="latestInfoText">直近決算期: 2025年3月期 | 直近10年データ（2016年〜2025年期）</p>
+      </div>
+      <div class="flex items-center gap-4 bg-slate-900/80 p-3 rounded-xl border border-slate-700/60 self-stretch md:self-auto justify-around">
+        <div class="text-center md:text-right">
+          <span class="block text-xs text-slate-400">自己資本比率 (最新)</span>
+          <span class="text-lg font-extrabold text-cyan-400" id="latestEquityRatio">-%</span>
+        </div>
+        <div class="h-8 w-px bg-slate-700"></div>
+        <div class="text-center md:text-right">
+          <span class="block text-xs text-slate-400">当期純利益 (最新)</span>
+          <span class="text-lg font-extrabold text-emerald-400" id="latestNetIncome">-</span>
+        </div>
+      </div>
+    </div>
 
-            <!-- Net Income -->
-            <div class="bg-cardBg border border-cardBorder p-4 rounded-2xl relative overflow-hidden">
-                <div class="flex justify-between items-start text-gray-400 text-xs mb-2">
-                    <span>当期純利益</span>
-                    <i data-lucide="trending-up" class="w-4 h-4 text-accentGreen"></i>
-                </div>
-                <div id="kpiNetIncome" class="text-xl md:text-2xl font-bold text-emerald-400">--</div>
-                <div class="text-xs text-gray-400 mt-1">過去最高益</div>
-            </div>
+    <!-- Key KPI Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4" id="kpiGrid">
+      <!-- Dynamic KPI Cards -->
+    </div>
 
-            <!-- Equity Ratio -->
-            <div class="bg-cardBg border border-cardBorder p-4 rounded-2xl relative overflow-hidden">
-                <div class="flex justify-between items-start text-gray-400 text-xs mb-2">
-                    <span>自己資本比率</span>
-                    <i data-lucide="shield-check" class="w-4 h-4 text-accentYellow"></i>
-                </div>
-                <div id="kpiEquityRatio" class="text-xl md:text-2xl font-bold text-white">--</div>
-                <div class="text-xs text-gray-400 mt-1">目安: 40%以上推奨</div>
-            </div>
+    <!-- Balance Sheet Visualizer Chart -->
+    <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 md:p-6 shadow-lg space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <i data-lucide="layers" class="w-5 h-5 text-cyan-400"></i>
+          <h2 class="text-base font-bold text-slate-100">BS (貸借対照表) 推移 & 構成比</h2>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="text-slate-400">表示単位:</span>
+          <button onclick="toggleAmountUnit('hundred_million')" id="unitBtn1" class="px-3 py-1 rounded-lg bg-cyan-600 text-white font-medium transition">億円</button>
+          <button onclick="toggleAmountUnit('million')" id="unitBtn2" class="px-3 py-1 rounded-lg bg-slate-700 text-slate-300 transition">百万円</button>
+        </div>
+      </div>
 
-            <!-- ROE -->
-            <div class="bg-cardBg border border-cardBorder p-4 rounded-2xl relative overflow-hidden">
-                <div class="flex justify-between items-start text-gray-400 text-xs mb-2">
-                    <span>ROE (自己資本利益率)</span>
-                    <i data-lucide="activity" class="w-4 h-4 text-accentPurple"></i>
-                </div>
-                <div id="kpiROE" class="text-xl md:text-2xl font-bold text-white">--</div>
-                <div class="text-xs text-gray-400 mt-1">目安: 8%以上推奨</div>
-            </div>
+      <div class="relative w-full overflow-x-auto custom-scroll pb-2">
+        <div class="min-w-[650px] sm:min-w-full h-80">
+          <canvas id="bsChart"></canvas>
+        </div>
+      </div>
+    </div>
 
-            <!-- Current Ratio -->
-            <div class="bg-cardBg border border-cardBorder p-4 rounded-2xl relative overflow-hidden">
-                <div class="flex justify-between items-start text-gray-400 text-xs mb-2">
-                    <span>流動比率</span>
-                    <i data-lucide="bar-chart-2" class="w-4 h-4 text-sky-400"></i>
-                </div>
-                <div id="kpiCurrentRatio" class="text-xl md:text-2xl font-bold text-white">--</div>
-                <div class="text-xs text-gray-400 mt-1">短期安全性の指標</div>
-            </div>
+    <!-- Financial Ratios Charts Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-slate-800 border border-slate-700/80 p-4 md:p-5 rounded-2xl shadow-lg space-y-3">
+        <h3 class="text-xs md:text-sm font-semibold text-slate-200 flex items-center gap-2">
+          <i data-lucide="pie-chart" class="w-4 h-4 text-cyan-400"></i>
+          自己資本比率 (%) & ROE (%) 推移
+        </h3>
+        <div class="h-60">
+          <canvas id="ratioChart1"></canvas>
+        </div>
+      </div>
 
-            <!-- Fixed Ratio -->
-            <div class="bg-cardBg border border-cardBorder p-4 rounded-2xl relative overflow-hidden">
-                <div class="flex justify-between items-start text-gray-400 text-xs mb-2">
-                    <span>固定比率</span>
-                    <i data-lucide="pie-chart" class="w-4 h-4 text-rose-400"></i>
-                </div>
-                <div id="kpiFixedRatio" class="text-xl md:text-2xl font-bold text-white">--</div>
-                <div class="text-xs text-gray-400 mt-1">100%以下が健全</div>
-            </div>
-        </section>
+      <div class="bg-slate-800 border border-slate-700/80 p-4 md:p-5 rounded-2xl shadow-lg space-y-3">
+        <h3 class="text-xs md:text-sm font-semibold text-slate-200 flex items-center gap-2">
+          <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+          流動比率 (%) & 固定比率 (%) 推移
+        </h3>
+        <div class="h-60">
+          <canvas id="ratioChart2"></canvas>
+        </div>
+      </div>
+    </div>
 
-        <!-- BS Visualizer Chart -->
-        <section class="bg-cardBg border border-cardBorder rounded-2xl p-5 md:p-6 shadow-xl">
-            <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-2">
-                <div>
-                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                        <i data-lucide="layers" class="w-5 h-5 text-accentBlue"></i>
-                        貸借対照表（BS）10年推移ビジュアル
-                    </h2>
-                    <p class="text-xs text-gray-400 mt-1">流動資産・固定資産と、流動負債・固定負債・純資産のバランス推移</p>
-                </div>
-            </div>
-            
-            <div class="relative w-full h-[380px] md:h-[450px]">
-                <canvas id="bsChart"></canvas>
-            </div>
-        </section>
+    <!-- Detailed Financial Table Accordion -->
+    <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 md:p-6 shadow-lg space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm md:text-base font-bold text-slate-200 flex items-center gap-2">
+          <i data-lucide="list-filter" class="w-5 h-5 text-cyan-400"></i>
+          年別 財務詳細内訳
+        </h3>
+        <span class="text-xs text-slate-400">タップで詳細開閉</span>
+      </div>
 
-        <!-- Financial Ratios Section -->
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Safety Ratios -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 md:p-6 shadow-xl">
-                <h3 class="text-md font-bold text-white flex items-center gap-2 mb-4">
-                    <i data-lucide="shield" class="w-4 h-4 text-accentYellow"></i>
-                    安全性指標の推移 (自己資本比率・流動比率)
-                </h3>
-                <div class="relative w-full h-[280px]">
-                    <canvas id="safetyChart"></canvas>
-                </div>
-            </div>
+      <div id="bsDetailAccordion" class="space-y-2">
+        <!-- Dynamic Accordion Content -->
+      </div>
+    </div>
 
-            <!-- Profitability Ratios -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 md:p-6 shadow-xl">
-                <h3 class="text-md font-bold text-white flex items-center gap-2 mb-4">
-                    <i data-lucide="line-chart" class="w-4 h-4 text-accentPurple"></i>
-                    収益性指標の推移 (ROE)
-                </h3>
-                <div class="relative w-full h-[280px]">
-                    <canvas id="profitabilityChart"></canvas>
-                </div>
-            </div>
-        </section>
+  </main>
 
-        <!-- Detailed Financial Breakdown Accordion / Table -->
-        <section class="bg-cardBg border border-cardBorder rounded-2xl p-5 md:p-6 shadow-xl">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                    <i data-lucide="table" class="w-5 h-5 text-accentGreen"></i>
-                    財務詳細データ (10年分)
-                </h2>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left text-gray-300">
-                    <thead class="text-xs text-gray-400 uppercase bg-darkBg/60 border-b border-cardBorder">
-                        <tr>
-                            <th scope="col" class="py-3 px-4 sticky left-0 bg-darkBg/90 z-10">決算期</th>
-                            <th scope="col" class="py-3 px-4 text-right">流動資産</th>
-                            <th scope="col" class="py-3 px-4 text-right">固定資産</th>
-                            <th scope="col" class="py-3 px-4 text-right">総資産</th>
-                            <th scope="col" class="py-3 px-4 text-right">流動負債</th>
-                            <th scope="col" class="py-3 px-4 text-right">固定負債</th>
-                            <th scope="col" class="py-3 px-4 text-right">純資産</th>
-                            <th scope="col" class="py-3 px-4 text-right">当期純利益</th>
-                            <th scope="col" class="py-3 px-4 text-right">自己資本比率</th>
-                        </tr>
-                    </thead>
-                    <tbody id="financialTableBody" class="divide-y divide-cardBorder/60">
-                        <!-- Table rows populated dynamically -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-    </main>
-
-    <footer class="mt-12 text-center text-xs text-gray-500 py-6 border-t border-cardBorder/40">
-        <p>© Toyota Financials Dashboard (7203) - Single Stock Visualizer</p>
-    </footer>
-
-    <!-- Application Script -->
-    <script>
-        // Toyota Motor Corporation Financial Data (Unit: Million JPY in raw data)
-        const toyotaData = {
-            years: ["2015/03", "2016/03", "2017/03", "2018/03", "2019/03", "2020/03", "2021/03", "2022/03", "2023/03", "2024/03"],
-            currentAssets: [17840134, 18320492, 19020112, 19800000, 20120000, 21280000, 24100000, 26800000, 28900000, 32500000],
-            fixedAssets:   [29893452, 29082341, 29890000, 30500000, 31800000, 31390000, 38100000, 39900000, 45400000, 56400000],
-            currentLiabilities: [16230492, 16120492, 16800000, 17200000, 18100000, 18500000, 21500000, 23800000, 26100000, 30200000],
-            fixedLiabilities:   [13890284, 13450284, 13900000, 14100000, 14300000, 14100000, 17200000, 18200000, 20400000, 24500000],
-            equity:             [17612810, 17832057, 18210112, 19000000, 19520000, 20070000, 23500000, 24700000, 27800000, 34200000],
-            netIncome:          [2173338,  2312694,  1831109,  2493983,  1882873,  2076183,  2245261,  2850110,  2451318,  4944933]
-        };
-
-        // State
-        let currentUnit = 'oku'; // 'oku' or 'hyaku'
-        let chartInstances = {};
-
-        // Helper functions
-        function formatVal(valMillion) {
-            if (currentUnit === 'oku') {
-                return (valMillion / 100).toLocaleString('ja-JP', { maximumFractionDigits: 0 });
-            }
-            return valMillion.toLocaleString('ja-JP');
-        }
-
-        function setUnit(unit) {
-            currentUnit = unit;
-            
-            const okuBtn = document.getElementById('unitOkuBtn');
-            const hyakuBtn = document.getElementById('unitHyakuBtn');
-
-            if (unit === 'oku') {
-                okuBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-accentBlue text-white shadow";
-                hyakuBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-gray-400 hover:text-white";
-            } else {
-                hyakuBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-accentBlue text-white shadow";
-                okuBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-gray-400 hover:text-white";
-            }
-
-            updateDashboard();
-        }
-
-        function calculateRatios() {
-            const len = toyotaData.years.length;
-            const equityRatios = [];
-            const roes = [];
-            const currentRatios = [];
-            const fixedRatios = [];
-            const totalAssets = [];
-
-            for (let i = 0; i < len; i++) {
-                const totalAsset = toyotaData.currentAssets[i] + toyotaData.fixedAssets[i];
-                totalAssets.push(totalAsset);
-
-                // Equity Ratio = Equity / Total Assets * 100
-                const eqRatio = (toyotaData.equity[i] / totalAsset) * 100;
-                equityRatios.push(eqRatio.toFixed(1));
-
-                // ROE = Net Income / Equity * 100
-                const roe = (toyotaData.netIncome[i] / toyotaData.equity[i]) * 100;
-                roes.push(roe.toFixed(1));
-
-                // Current Ratio = Current Assets / Current Liabilities * 100
-                const curRatio = (toyotaData.currentAssets[i] / toyotaData.currentLiabilities[i]) * 100;
-                currentRatios.push(curRatio.toFixed(1));
-
-                // Fixed Ratio = Fixed Assets / Equity * 100
-                const fixRatio = (toyotaData.fixedAssets[i] / toyotaData.equity[i]) * 100;
-                fixedRatios.push(fixRatio.toFixed(1));
-            }
-
-            return { equityRatios, roes, currentRatios, fixedRatios, totalAssets };
-        }
-
-        function updateKPIs(ratios) {
-            const lastIdx = toyotaData.years.length - 1;
-            const unitLabel = currentUnit === 'oku' ? '億円' : '百万円';
-
-            document.getElementById('kpiTotalAssets').innerText = `${formatVal(ratios.totalAssets[lastIdx])} ${unitLabel}`;
-            document.getElementById('kpiNetIncome').innerText = `${formatVal(toyotaData.netIncome[lastIdx])} ${unitLabel}`;
-            document.getElementById('kpiEquityRatio').innerText = `${ratios.equityRatios[lastIdx]} %`;
-            document.getElementById('kpiROE').innerText = `${ratios.roes[lastIdx]} %`;
-            document.getElementById('kpiCurrentRatio').innerText = `${ratios.currentRatios[lastIdx]} %`;
-            document.getElementById('kpiFixedRatio').innerText = `${ratios.fixedRatios[lastIdx]} %`;
-        }
-
-        function renderBSTable(ratios) {
-            const tbody = document.getElementById('financialTableBody');
-            tbody.innerHTML = '';
-
-            const unitLabel = currentUnit === 'oku' ? '億円' : '百万円';
-
-            for (let i = toyotaData.years.length - 1; i >= 0; i--) {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-cardBg/80 transition-colors";
-
-                tr.innerHTML = `
-                    <td class="py-3.5 px-4 font-semibold text-white sticky left-0 bg-cardBg">${toyotaData.years[i]}</td>
-                    <td class="py-3.5 px-4 text-right">${formatVal(toyotaData.currentAssets[i])}</td>
-                    <td class="py-3.5 px-4 text-right">${formatVal(toyotaData.fixedAssets[i])}</td>
-                    <td class="py-3.5 px-4 text-right font-bold text-white">${formatVal(ratios.totalAssets[i])}</td>
-                    <td class="py-3.5 px-4 text-right text-gray-400">${formatVal(toyotaData.currentLiabilities[i])}</td>
-                    <td class="py-3.5 px-4 text-right text-gray-400">${formatVal(toyotaData.fixedLiabilities[i])}</td>
-                    <td class="py-3.5 px-4 text-right text-emerald-400 font-medium">${formatVal(toyotaData.equity[i])}</td>
-                    <td class="py-3.5 px-4 text-right text-emerald-300 font-medium">${formatVal(toyotaData.netIncome[i])}</td>
-                    <td class="py-3.5 px-4 text-right font-medium text-amber-400">${ratios.equityRatios[i]}%</td>
-                `;
-                tbody.appendChild(tr);
-            }
-        }
-
-        function renderBSChart() {
-            const ctx = document.getElementById('bsChart').getContext('2d');
-            if (chartInstances.bsChart) chartInstances.bsChart.destroy();
-
-            const factor = currentUnit === 'oku' ? 100 : 1;
-            const unitLabel = currentUnit === 'oku' ? '億円' : '百万円';
-
-            chartInstances.bsChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: toyotaData.years,
-                    datasets: [
-                        {
-                            label: '流動資産',
-                            data: toyotaData.currentAssets.map(v => v / factor),
-                            backgroundColor: 'rgba(59, 130, 246, 0.85)',
-                            stack: 'Stack 0',
-                            borderRadius: 4
-                        },
-                        {
-                            label: '固定資産',
-                            data: toyotaData.fixedAssets.map(v => v / factor),
-                            backgroundColor: 'rgba(30, 64, 175, 0.85)',
-                            stack: 'Stack 0',
-                            borderRadius: 4
-                        },
-                        {
-                            label: '流動負債',
-                            data: toyotaData.currentLiabilities.map(v => v / factor),
-                            backgroundColor: 'rgba(239, 68, 68, 0.75)',
-                            stack: 'Stack 1',
-                            borderRadius: 4
-                        },
-                        {
-                            label: '固定負債',
-                            data: toyotaData.fixedLiabilities.map(v => v / factor),
-                            backgroundColor: 'rgba(185, 28, 28, 0.75)',
-                            stack: 'Stack 1',
-                            borderRadius: 4
-                        },
-                        {
-                            label: '純資産',
-                            data: toyotaData.equity.map(v => v / factor),
-                            backgroundColor: 'rgba(16, 185, 129, 0.85)',
-                            stack: 'Stack 1',
-                            borderRadius: 4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    plugins: {
-                        legend: {
-                            labels: { color: '#9ca3af', font: { size: 12 } },
-                            position: 'top'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.dataset.label}: ${context.raw.toLocaleString('ja-JP')} ${unitLabel}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            stacked: true,
-                            grid: { color: 'rgba(34, 47, 67, 0.5)' },
-                            ticks: { color: '#9ca3af' }
-                        },
-                        y: {
-                            stacked: true,
-                            grid: { color: 'rgba(34, 47, 67, 0.5)' },
-                            ticks: {
-                                color: '#9ca3af',
-                                callback: function(value) {
-                                    return value.toLocaleString('ja-JP');
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function renderRatioCharts(ratios) {
-            // Safety Ratios Chart
-            const ctxSafety = document.getElementById('safetyChart').getContext('2d');
-            if (chartInstances.safetyChart) chartInstances.safetyChart.destroy();
-
-            chartInstances.safetyChart = new Chart(ctxSafety, {
-                type: 'line',
-                data: {
-                    labels: toyotaData.years,
-                    datasets: [
-                        {
-                            label: '自己資本比率 (%)',
-                            data: ratios.equityRatios,
-                            borderColor: '#f59e0b',
-                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                            borderWidth: 2.5,
-                            fill: true,
-                            tension: 0.3
-                        },
-                        {
-                            label: '流動比率 (%)',
-                            data: ratios.currentRatios,
-                            borderColor: '#38bdf8',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            borderDash: [4, 4],
-                            tension: 0.3
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { labels: { color: '#9ca3af' } },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%`
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { grid: { color: 'rgba(34, 47, 67, 0.5)' }, ticks: { color: '#9ca3af' } },
-                        y: { grid: { color: 'rgba(34, 47, 67, 0.5)' }, ticks: { color: '#9ca3af' } }
-                    }
-                }
-            });
-
-            // Profitability Ratios Chart
-            const ctxProfitability = document.getElementById('profitabilityChart').getContext('2d');
-            if (chartInstances.profitabilityChart) chartInstances.profitabilityChart.destroy();
-
-            chartInstances.profitabilityChart = new Chart(ctxProfitability, {
-                type: 'line',
-                data: {
-                    labels: toyotaData.years,
-                    datasets: [
-                        {
-                            label: 'ROE (%)',
-                            data: ratios.roes,
-                            borderColor: '#8b5cf6',
-                            backgroundColor: 'rgba(139, 92, 246, 0.15)',
-                            borderWidth: 2.5,
-                            fill: true,
-                            tension: 0.3
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { labels: { color: '#9ca3af' } },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%`
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { grid: { color: 'rgba(34, 47, 67, 0.5)' }, ticks: { color: '#9ca3af' } },
-                        y: { grid: { color: 'rgba(34, 47, 67, 0.5)' }, ticks: { color: '#9ca3af' } }
-                    }
-                }
-            });
-        }
-
-        function updateDashboard() {
-            const ratios = calculateRatios();
-            updateKPIs(ratios);
-            renderBSChart();
-            renderRatioCharts(ratios);
-            renderBSTable(ratios);
-        }
-
-        // Initialize App on Window Load
-        window.onload = function() {
-            lucide.createIcons();
-            updateDashboard();
-        };
-    </script>
-</body>
-</html>
+  <script>
+    // TOYOTA MOTOR CORP (7203) 10-YEAR HISTORICAL DATA (2016 - 2025)
+    const TOYOTA_DATA = {
+      code: "720
